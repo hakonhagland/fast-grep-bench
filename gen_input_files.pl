@@ -18,7 +18,6 @@ GetOptions (
 )
   or die("Error in command line arguments\n");
 
-
 # Generated random words from site: https://www.randomlists.com/random-words
 my $word_filename        = 'words.txt'; # 75 random words
 my $case                 = $opt{case};
