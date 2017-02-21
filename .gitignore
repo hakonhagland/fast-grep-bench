@@ -1,0 +1,5 @@
+# .gitignore file created by PCL at: Tue Feb 21 19:33:27 2017
+./file1.txt
+./file2.txt
+./regexp1.txt
+**/out.txt
