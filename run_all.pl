@@ -7,6 +7,7 @@ use warnings;
 use Cwd;
 use Getopt::Long;
 use Data::Printer;
+use FGB::Common;
 use List::Util qw(max shuffle);
 
 GetOptions (
@@ -88,9 +89,10 @@ sub check_output_is_ok {
 sub get_test_names {
     my ( $dir ) = @_;
     
+    my $skip = FGB::Common::get_skip_test_names( );
     my $curdir = getcwd();
     chdir $dir;
-    my @tests = List::Util::shuffle grep { -d } <*>; 
+    my @tests = List::Util::shuffle grep { -d && (!exists $skip->{$_}) } <*>; 
     chdir $curdir;
     return \@tests;
 }

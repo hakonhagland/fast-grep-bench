@@ -1,6 +1,8 @@
 #! /usr/bin/env perl
 
 use feature qw(say);
+# get correct sort order for join command: (on my machine: LC_COLLATE=en_US.UTF-8)
+use locale; 
 use strict;
 use warnings;
 
@@ -9,20 +11,22 @@ use File::Spec::Functions qw(catfile);
 use Getopt::Long;
 
 my %opt = (
-    num_lines => 1_000_000,
+    num_lines => 10_000_000,
     case     => undef,
 );
 GetOptions (
     "num_lines=i" => \$opt{num_lines},
-    "case=s"      => \$opt{case},
+    "case=s"      => \$opt{case}, # do not generate anything, just copy existing case
 )
   or die("Error in command line arguments\n");
 
-# Generated random words from site: https://www.randomlists.com/random-words
-my $word_filename        = 'words.txt'; # 75 random words
+# Generated random words were taken from two different sources:
+#  1. https://www.randomlists.com/random-words
+#  2. Local file: /usr/share/dict/american-english (99171 words)
+my $word_filename        = 'words.txt'; 
 my $case                 = $opt{case};
 my $case_dir             = 'cases';
-my $num_match_words      = 5;
+my $num_match_words      = 100;
 my $num_file2_lines      = $opt{num_lines};
 my $file2_words_per_line = 3;
 my $file2_match_field_no = 2;
@@ -51,7 +55,7 @@ else {
 sub copy_case_info {
     my ( $case, $case_dir ) = @_;
 
-    my @files = qw(file1.txt file2.txt regexp1.txt);
+    my @files = qw(file1.txt file2.txt regexp1.txt skip.txt);
     say "Copying files from case '$case'..";
     for (@files) {
         my $fn = catfile( $case_dir, $case, $_ );
