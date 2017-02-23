@@ -9,18 +9,24 @@ use Getopt::Long;
 use Data::Printer;
 use FGB::Common;
 use List::Util qw(max shuffle);
+use Number::Bytes::Human qw(format_bytes);
+use Sys::Info;
 
 GetOptions (
-    "verbose"    => \my $verbose,
-    "check"      => \my $check,
-    "expected=i" => \my $expected_no_lines,
+    "verbose"       => \my $verbose,
+    "check"         => \my $check,
+    "single-case=s" => \my $case,
+    "expected=i"    => \my $expected_no_lines,
 ) or die("Error in command line arguments\n");
 
 my $test_dir    = 'solutions';
 my $output_file = 'out.txt';
 my $wc_expected = $expected_no_lines; # expected number of output lines
 
-my $tests = get_test_names( $test_dir );
+my $tests       = get_test_names( $test_dir, $case );
+
+my $file2_size  = get_file2_size();
+my $num_cpus    = Sys::Info->new()->device( CPU => () )->count;
 
 chdir $test_dir;
 my $cmd = 'run.sh';
@@ -29,18 +35,34 @@ for my $case (@$tests) {
     my $savedir = getcwd();
     chdir $case;
     say "Running '$case'..";
-    my $output = `bash -c "{ time -p $cmd; } 2>&1"`;
+    my $arg = get_cmd_args( $case, $file2_size, $num_cpus );
+    my $output = `bash -c "{ time -p $cmd $arg; } 2>&1"`;
     my ($user, $sys, $real ) = get_run_times( $output );
     print_timings( $user, $sys, $real ) if $verbose;
     check_output_is_ok( $output_file, $wc_expected, $verbose, $check );
     print "\n" if $verbose;
-    push @times, $user + $sys;
+    push @times, $real;
+    #push @times, $user + $sys; # this is wrong when using Gnu parallel
     chdir $savedir;
 }
 
 say "Done.\n";
 
 print_summary( $tests, \@times );
+
+sub get_file2_size {
+    return -s "file2.txt";
+}
+
+sub get_cmd_args {
+    my ( $case, $file2_size, $ncpus ) = @_;
+    my $arg = '';
+    if ( $case eq "gregory1" ) {
+        my $block_size = $file2_size / $ncpus;
+        $arg = Number::Bytes::Human::format_bytes( $block_size );
+    }
+    return $arg;
+}
 
 sub print_timings {
     my ( $user, $sys, $real ) = @_;
@@ -87,12 +109,18 @@ sub check_output_is_ok {
 }
 
 sub get_test_names {
-    my ( $dir ) = @_;
-    
-    my $skip = FGB::Common::get_skip_test_names( );
-    my $curdir = getcwd();
-    chdir $dir;
-    my @tests = List::Util::shuffle grep { -d && (!exists $skip->{$_}) } <*>; 
-    chdir $curdir;
+    my ( $dir, $case ) = @_;
+
+    my @tests;
+    if ( defined $case ) {
+        @tests = ( $case );
+    }
+    else {
+        my $skip = FGB::Common::get_skip_test_names( );
+        my $curdir = getcwd();
+        chdir $dir;
+        @tests = List::Util::shuffle grep { -d && (!exists $skip->{$_}) } <*>; 
+        chdir $curdir;
+    }
     return \@tests;
 }
