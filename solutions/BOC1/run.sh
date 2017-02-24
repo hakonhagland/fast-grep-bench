@@ -1,3 +1,3 @@
 #! /bin/bash
 
-grep -E -f ../../regexp1.txt ../../file2.txt >out.txt
+grep -E -f ../../file1.txt ../../file2.txt >out.txt

@@ -19,27 +19,27 @@ GetOptions (
     "expected=i"    => \my $expected_no_lines,
 ) or die("Error in command line arguments\n");
 
-my $test_dir    = 'solutions';
-my $output_file = 'out.txt';
+my $param = FGB::Common::get_param();
+    
 my $wc_expected = $expected_no_lines; # expected number of output lines
 
-my $tests       = get_test_names( $test_dir, $case );
+my $tests       = get_test_names( $param, $case );
 
-my $file2_size  = get_file2_size();
-my $num_cpus    = Sys::Info->new()->device( CPU => () )->count;
+my $file2_size   = get_file2_size();
+my $num_cpus     = Sys::Info->new()->device( CPU => () )->count;
 
-chdir $test_dir;
+chdir $param->{test_dir};
 my $cmd = 'run.sh';
 my @times;
 for my $case (@$tests) {
     my $savedir = getcwd();
     chdir $case;
     say "Running '$case'..";
-    my $arg = get_cmd_args( $case, $file2_size, $num_cpus );
+    my $arg = get_cmd_args( $case, $file2_size, $num_cpus, $param );
     my $output = `bash -c "{ time -p $cmd $arg; } 2>&1"`;
     my ($user, $sys, $real ) = get_run_times( $output );
     print_timings( $user, $sys, $real ) if $verbose;
-    check_output_is_ok( $output_file, $wc_expected, $verbose, $check );
+    check_output_is_ok( $param, $wc_expected, $verbose, $check );
     print "\n" if $verbose;
     push @times, $real;
     #push @times, $user + $sys; # this is wrong when using Gnu parallel
@@ -55,14 +55,16 @@ sub get_file2_size {
 }
 
 sub get_cmd_args {
-    my ( $case, $file2_size, $ncpus ) = @_;
+    my ( $case, $file2_size, $ncpus, $param ) = @_;
+
     my $arg = '';
-    if ( $case eq "gregory1" ) {
+    if ( ($case eq "gregory1") || ( $case eq "gregory1B" )  ) {
         my $block_size = $file2_size / $ncpus;
         $arg = Number::Bytes::Human::format_bytes( $block_size );
     }
     return $arg;
 }
+
 
 sub print_timings {
     my ( $user, $sys, $real ) = @_;
@@ -93,7 +95,8 @@ sub print_summary {
 }
 
 sub check_output_is_ok {
-    my ( $fn, $expected, $verbose, $check ) = @_;
+    my ( $param, $expected, $verbose, $check ) = @_;
+    my $fn = $param->{output_file};
     my $count = 0;
     open ( my $fh, '<', $fn ) or die "Could not open file '$fn': $!";
     $count++ while <$fh>;
@@ -109,8 +112,9 @@ sub check_output_is_ok {
 }
 
 sub get_test_names {
-    my ( $dir, $case ) = @_;
+    my ( $param, $case ) = @_;
 
+    my $dir = $param->{test_dir};
     my @tests;
     if ( defined $case ) {
         @tests = ( $case );

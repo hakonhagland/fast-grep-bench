@@ -2,59 +2,64 @@
 
 use feature qw(say);
 # get correct sort order for join command: (on my machine: LC_COLLATE=en_US.UTF-8)
+use lib '.';
 use locale; 
 use strict;
 use warnings;
 
 use Data::Printer;
+use FGB::Common;
 use File::Spec::Functions qw(catfile);
 use Getopt::Long;
 
+# Assumptions:
+#
+#  1.  File words.txt is defined in current directory
+#
+
 my %opt = (
-    num_lines => 10_000_000,
-    case     => undef,
+    force_regen=> 0,  #force regeneration of files when $opt{case} is given
+    num_words  => 100,
+    num_lines  => 10_000_000,
+    case       => undef,
 );
 GetOptions (
-    "num_lines=i" => \$opt{num_lines},
+    "num-words=i" => \$opt{num_words},
+    "num-lines=i" => \$opt{num_lines},
     "case=s"      => \$opt{case}, # do not generate anything, just copy existing case
+    "force-regen" => \$opt{force_regen},
 )
   or die("Error in command line arguments\n");
+
+my $param = FGB::Common::get_param();
 
 # Generated random words were taken from two different sources:
 #  1. https://www.randomlists.com/random-words
 #  2. Local file: /usr/share/dict/american-english (99171 words)
-my $word_filename        = 'words.txt'; 
 my $case                 = $opt{case};
-my $case_dir             = 'cases';
-my $num_match_words      = 100;
+my $num_match_words      = $opt{num_words};  # number of words to produce in file1.txt
 my $num_file2_lines      = $opt{num_lines};
-my $file2_words_per_line = 3;
-my $file2_match_field_no = 2;
-my $file1_filename       = 'file1.txt';
-my $file2_filename       = 'file2.txt';
-my $file1_regex_fn       = 'regexp1.txt';
 
-my ( $words1, $words2 ) = get_words(
-    $word_filename, $num_match_words, $case, $case_dir
-);
-
-if ( defined $case ) {
-    copy_case_info( $case, $case_dir );
+if ( (defined $case ) && ( !$opt{force_regen} )  ) {
+    copy_case_info( $param, $case );
 }
 else {
+    if ( (defined $case ) && $opt{force_regen} ) {
+        copy_case_words_file_to_curdir( $param, $case );
+    }
+    my ( $words1, $words2 ) = get_words( $param, $num_match_words, $case );
+
     say "generating $num_file2_lines lines..";
-    write_file1( $file1_filename, $words2 );
-    write_file2(
-        $file2_filename, $words1, $words2, $num_file2_lines,
-        $file2_words_per_line, $file2_match_field_no
-    );
-    write_BOC_regexp_file( $file1_regex_fn, $words2 );
+    write_file1( $param, $words2 );
+    write_file2( $param, $words1, $words2, $num_file2_lines );
+    write_BOC_regexp_file( $param, $words2 );
 }
 
 
-sub copy_case_info {
-    my ( $case, $case_dir ) = @_;
+sub copy_case_words_file_to_curdir {
+    my ( $param, $case ) = @_;
 
+    my $case_dir = $param->{case_dir};
     my @files = qw(file1.txt file2.txt regexp1.txt skip.txt);
     say "Copying files from case '$case'..";
     for (@files) {
@@ -64,18 +69,43 @@ sub copy_case_info {
     }
 }
 
-sub write_BOC_regexp_file {
-    my ( $fn, $words ) = @_;
+sub copy_case_info {
+    my ( $param, $case ) = @_;
 
+    my $case_dir = $param->{case_dir};
+    my @keys = qw( file1_name file2_name file1_regex_fn skip_fn );
+    my @files = @{ $param }{@keys};
+    push @files, FGB::Common::get_alternate_filenames( $param );
+    
+    say "Copying files from case '$case'..";
+    for (@files) {
+        my $fn = catfile( $case_dir, $case, $_ );
+        say "..$fn";
+        system "cp $fn .";
+    }
+}
+
+sub write_BOC_regexp_file {
+    my ( $param, $words ) = @_;
+
+    my $fn = $param->{file1_regex_fn};
+    my $fn2 = FGB::Common::get_alternate_file1_regexp_fn( $param );
+    my $regexp = '\\|' . (join "|", @$words) . '\\|';
     open( my $fh, '>', $fn ) or die "Could not open file '$fn': $!";
-    print $fh '\\|' . (join "|", @$words) . '\\|';
+    print $fh $regexp;
     close $fh;
+    open( my $fh2, '>', $fn2 ) or die "Could not open file '$fn2': $!";
+    print $fh2 '^[^|]*' . $regexp;
+    close $fh2;
 }
 
 sub write_file2 {
-    my ( $fn, $words1, $words2, $nlines, $words_per_line, $field_no ) = @_;
+    my ( $param, $words1, $words2, $nlines ) = @_;
 
-
+    my $fn = $param->{file2_name};
+    my $words_per_line = $param->{file2_words_per_line};
+    my $field_no = $param->{file2_match_field_no};
+    
     my $nwords1 = scalar @$words1;
     my $nwords2 = scalar @$words2;
     my @lines;
@@ -109,16 +139,29 @@ sub write_file2 {
 }
 
 sub write_file1 {
-    my ( $fn, $words ) = @_;
+    my ( $param, $words ) = @_;
 
+    my $fn = $param->{file1_name};
     open( my $fh, '>', $fn ) or die "Could not open file '$fn': $!";
     print $fh (join "\n", sort @$words);
     close $fh;
+
+    # Format file1.txt differently for some of the methods.
+    # I.e., write the original file1.txt and a modified file1b.txt.
+    # file1b.txt will be used by the methods that use regex search to find
+    # the field match.
+    my $fn2 = FGB::Common::get_alternate_file1_fn( $param );
+    open( my $fh2, '>', $fn2 ) or die "Could not open file '$fn2': $!";
+    print $fh2 (join "\n", map { '^[^|]*\|' . $_ . '\|'} sort @$words);
+    close $fh2;
+    
 }
 
 sub get_words {
-    my ( $fn, $N, $case, $case_dir ) = @_;
+    my ( $param, $N, $case ) = @_;
 
+    my $fn = $param->{word_filename};
+    my $case_dir = $param->{case_dir};
     if ( defined $case ) {
         $fn = catfile( $case_dir, $case, $fn );
     }
