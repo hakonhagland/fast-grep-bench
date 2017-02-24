@@ -5,17 +5,19 @@ use strict;
 use warnings;
 
 my %param = (
-    case_dir             => 'cases',
-    file1_name           => 'file1.txt',
-    file1_regex_fn       => 'regexp1.txt',
-    file2_match_field_no => 2,
-    file2_name           => 'file2.txt',
-    file2_words_per_line => 3,
-    output_file          => 'out.txt',
-    regexp1_name         => 'regexp1.txt',
-    skip_fn              => 'skip.txt',
-    test_dir             => 'solutions',
-    word_filename        => 'words.txt', 
+    case_dir               => 'cases',
+    case_param_file_name   => 'params.json',
+    file1_name             => 'file1.txt',
+    file1_regex_fn         => 'regexp1.txt',
+    file1_ikegami_regex_fn => 'regexp_ikegami.txt',
+    file2_match_field_no   => 2,
+    file2_name             => 'file2.txt',
+    file2_words_per_line   => 3,
+    output_file            => 'out.txt',
+    regexp1_name           => 'regexp1.txt',
+    skip_fn                => 'skip.txt',
+    test_dir               => 'solutions',
+    word_filename          => 'words.txt', 
 );
 
 sub get_param {

@@ -8,9 +8,11 @@ use strict;
 use warnings;
 
 use Data::Printer;
+use JSON;
 use FGB::Common;
 use File::Spec::Functions qw(catfile);
 use Getopt::Long;
+use Regexp::Assemble qw( );
 
 # Assumptions:
 #
@@ -21,8 +23,9 @@ my %opt = (
     force_regen=> 0,  #force regeneration of files when $opt{case} is given
     num_words  => 100,
     num_lines  => 10_000_000,
-    case       => undef,
+    case       => undef, # copy files from a specific case instead of generating files.
 );
+
 GetOptions (
     "num-words=i" => \$opt{num_words},
     "num-lines=i" => \$opt{num_lines},
@@ -37,8 +40,6 @@ my $param = FGB::Common::get_param();
 #  1. https://www.randomlists.com/random-words
 #  2. Local file: /usr/share/dict/american-english (99171 words)
 my $case                 = $opt{case};
-my $num_match_words      = $opt{num_words};  # number of words to produce in file1.txt
-my $num_file2_lines      = $opt{num_lines};
 
 if ( (defined $case ) && ( !$opt{force_regen} )  ) {
     copy_case_info( $param, $case );
@@ -46,34 +47,42 @@ if ( (defined $case ) && ( !$opt{force_regen} )  ) {
 else {
     if ( (defined $case ) && $opt{force_regen} ) {
         copy_case_words_file_to_curdir( $param, $case );
+        ( $opt{num_words}, $opt{num_lines} ) = read_case_params( $param, $case );
     }
-    my ( $words1, $words2 ) = get_words( $param, $num_match_words, $case );
+    my ( $words1, $words2 ) = get_words( $param, $case, \%opt );
 
-    say "generating $num_file2_lines lines..";
+    say "generating $opt{num_lines} lines (words=$opt{num_words})..";
     write_file1( $param, $words2 );
-    write_file2( $param, $words1, $words2, $num_file2_lines );
+    write_file2( $param, $words1, $words2, \%opt );
     write_BOC_regexp_file( $param, $words2 );
+    write_ikegami_regexp_file( $param, $words2 );
 }
 
+
+sub read_case_params {
+    my ( $param, $case ) = @_;
+
+    my $fn = catfile( $param->{case_dir}, $case, $param->{case_param_file_name} );
+    open ( my $fh, '<', $fn ) or die "Could not open file '$fn': $!";
+    my $str = do {local $/; <$fh>};
+    close $fh;
+    my $h = JSON::decode_json( $str );
+    return ( $h->{"num-words"}, $h->{"num-lines"} );
+}
 
 sub copy_case_words_file_to_curdir {
     my ( $param, $case ) = @_;
 
-    my $case_dir = $param->{case_dir};
-    my @files = qw(file1.txt file2.txt regexp1.txt skip.txt);
-    say "Copying files from case '$case'..";
-    for (@files) {
-        my $fn = catfile( $case_dir, $case, $_ );
-        say "..$fn";
-        system "cp $fn .";
-    }
+    my $fn = catfile( $param->{case_dir}, $case, $param->{word_filename} );
+    say "Copying file '$fn'.. to current dir";
+    system "cp $fn .";
 }
 
 sub copy_case_info {
     my ( $param, $case ) = @_;
 
     my $case_dir = $param->{case_dir};
-    my @keys = qw( file1_name file2_name file1_regex_fn skip_fn );
+    my @keys = qw( file1_name file2_name file1_regex_fn skip_fn word_filename );
     my @files = @{ $param }{@keys};
     push @files, FGB::Common::get_alternate_filenames( $param );
     
@@ -83,6 +92,18 @@ sub copy_case_info {
         say "..$fn";
         system "cp $fn .";
     }
+}
+
+sub write_ikegami_regexp_file {
+    my ( $param, $words ) = @_;
+
+    my $fn = $param->{file1_ikegami_regex_fn};
+    my $ra = Regexp::Assemble->new();
+    $ra->add(quotemeta($_)) for @$words;
+    
+    open( my $fh, '>', $fn ) or die "Could not open file '$fn': $!";
+    print {$fh} ("^[^|]*\\|(?:" . (re::regexp_pattern($ra->re()))[0] . ")\\|");
+    close $fh;
 }
 
 sub write_BOC_regexp_file {
@@ -100,8 +121,9 @@ sub write_BOC_regexp_file {
 }
 
 sub write_file2 {
-    my ( $param, $words1, $words2, $nlines ) = @_;
+    my ( $param, $words1, $words2, $opt ) = @_;
 
+    my $nlines = $opt->{num_lines};
     my $fn = $param->{file2_name};
     my $words_per_line = $param->{file2_words_per_line};
     my $field_no = $param->{file2_match_field_no};
@@ -158,17 +180,14 @@ sub write_file1 {
 }
 
 sub get_words {
-    my ( $param, $N, $case ) = @_;
+    my ( $param, $case, $opt ) = @_;
 
+    my $N = $opt->{num_words};
     my $fn = $param->{word_filename};
-    my $case_dir = $param->{case_dir};
-    if ( defined $case ) {
-        $fn = catfile( $case_dir, $case, $fn );
-    }
     open( my $fh, '<', $fn ) or die "Could not open file '$fn': $!";
     my @words = map {chomp $_; $_} <$fh>;
     close $fh;
-    
+
     my @words1 = @words[$N..$#words];
     my @words2 = @words[0..($N - 1)];
     return ( \@words1, \@words2 );
