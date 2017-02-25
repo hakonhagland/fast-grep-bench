@@ -8,6 +8,7 @@ use Cwd;
 use Getopt::Long;
 use Data::Printer;
 use FGB::Common;
+use File::pushd ();
 use List::Util qw(max shuffle);
 use Number::Bytes::Human qw(format_bytes);
 use Sys::Info;
@@ -28,27 +29,34 @@ my $tests       = get_test_names( $param, $case );
 my $file2_size   = get_file2_size();
 my $num_cpus     = Sys::Info->new()->device( CPU => () )->count;
 
-chdir $param->{test_dir};
-my $cmd = 'run.sh';
-my @times;
-for my $case (@$tests) {
-    my $savedir = getcwd();
-    chdir $case;
-    say "Running '$case'..";
-    my $arg = get_cmd_args( $case, $file2_size, $num_cpus, $param );
-    my $output = `bash -c "{ time -p $cmd $arg; } 2>&1"`;
-    my ($user, $sys, $real ) = get_run_times( $output );
-    print_timings( $user, $sys, $real ) if $verbose;
-    check_output_is_ok( $param, $wc_expected, $verbose, $check );
-    print "\n" if $verbose;
-    push @times, $real;
-    #push @times, $user + $sys; # this is wrong when using Gnu parallel
-    chdir $savedir;
+my $times = do {
+    my $pdir = File::pushd::pushd( $param->{test_dir} );
+    run_cases( $param, $tests,  $file2_size, $num_cpus, $verbose, $check, $wc_expected );
+};
+
+print_summary( $tests, $times );
+
+sub run_cases {
+    my ( $param, $tests,  $file2_size, $num_cpus, $verbose, $check, $wc_expected ) = @_;
+
+    my $cmd = 'run.sh';
+    my @times;
+    for my $case (@$tests) {
+        my $pdir = File::pushd::pushd( $case );
+        say "Running '$case'..";
+        my $arg = get_cmd_args( $case, $file2_size, $num_cpus, $param );
+        my $output = `bash -c "{ time -p $cmd $arg; } 2>&1"`;
+        my ($user, $sys, $real ) = get_run_times( $output );
+        print_timings( $user, $sys, $real ) if $verbose;
+        check_output_is_ok( $param, $wc_expected, $verbose, $check );
+        print "\n" if $verbose;
+        push @times, $real;
+        #push @times, $user + $sys; # this is wrong when using Gnu parallel
+    }
+    say "Done.\n";
+    return \@times;
 }
 
-say "Done.\n";
-
-print_summary( $tests, \@times );
 
 sub get_file2_size {
     return -s "file2.txt";
@@ -89,9 +97,19 @@ sub print_summary {
     say "Summary";
     say "-------";
 
-    printf "%-${N}s : %.4gs\n", $_->[0], $_->[1] for
-      sort { $a->[1] <=> $b->[1] }
-      map [$tests->[$_], $times->[$_]], 0..$#$tests; 
+    my @table = sort { $a->[1] <=> $b->[1] }
+       map [$tests->[$_], $times->[$_]], 0..$#$tests;
+    write_results_table( \@table );
+    printf "%-${N}s : %.4gs\n", $_->[0], $_->[1] for @table;
+}
+
+sub write_results_table {
+    my ( $table ) = @_;
+
+    my $fn = 'result_table.txt';
+    open ( my $fh, '>', $fn ) or die "Could not open file '$fn': $!";
+    print $fh join "\n", map { join ' ', @$_ } @$table;
+    close $fh;
 }
 
 sub check_output_is_ok {

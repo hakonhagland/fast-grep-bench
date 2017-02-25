@@ -13,10 +13,10 @@ my %word = map { chomp; $_ => 1 } <$fh>;
 open    $fh,     '<', $bigfile or die "Can't open $bigfile: $!";   
 
 while ( <$fh>)  {
-    exists $word{ (/\|([^|]+)/)[0] } && print;  
+    # exists $word{ (/\|([^|]+)/)[0] } && print;  
 
     # Or
-    #exists $word{ (split /\|/)[1] } && print $fh_out $_;
+    exists $word{ (split /\|/)[1] } && print;
 }
 
 close $fh;

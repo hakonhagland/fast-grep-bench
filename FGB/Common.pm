@@ -65,4 +65,36 @@ sub get_skip_test_names {
     return \%skip;
 }
 
+sub get_method_info {
+    my ( $names ) = @_;
+
+    my %h = (
+        BOC1               => 'grep -E [loose]',
+        BOC1B              => 'grep -E [strict]',
+        BOC2               => 'LC_ALL grep -E [loose]',
+        BOC2B              => 'LC_ALL grep -E [strict]',
+        codeforester       => '[perl + split+dict]',
+        codeforester_orig  => 'fgrep -f [loose]', 
+        codeforester_origB => 'grep -E -f [strict]',
+        dawg               => '[python + split+dict]',
+        gregory1           => '[parallel + fgrep -f [loose]]',
+        gregory1B          => '[parallel + grep -E -f [strict]]',
+        ikegami            => 'grep -P',
+        inian1             => '[awk + match($0,i) [loose]]',
+        inian1B            => '[awk + match($0,i) [strict]]',
+        inian2             => '[awk + index($0,i)]',
+        inian3             => '[awk + split+dict]',
+        inian4             => 'LC_ALL fgrep -f [loose]',
+        inian4B            => 'LC_ALL grep -E -f [strict]',
+        inian5             => '[LC_ALL awk + match($0,i) [loose]]',
+        inian5B            => '[LC_ALL awk + match($0,i) [strict]]',
+        inian6             => '[LC_ALL awk + split+dict]',
+        oliv               => '[python + compiled regex + re.search()]',
+        Vasiliou           => '[join [requires sorted files]]',
+        zdim               => '[perl + split+dict]',
+    );
+    $h{$_} //= '' for @$names;
+    return \%h;
+}
+
 1;
