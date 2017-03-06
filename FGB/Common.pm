@@ -79,6 +79,7 @@ sub get_method_info {
         dawg               => '[python + split+dict]',
         gregory1           => '[parallel + fgrep -f [loose]]',
         gregory1B          => '[parallel + grep -E -f [strict]]',
+        hakon1             => '[perl + c]',
         ikegami            => 'grep -P',
         inian1             => '[awk + match($0,i) [loose]]',
         inian1B            => '[awk + match($0,i) [strict]]',
@@ -89,9 +90,11 @@ sub get_method_info {
         inian5             => '[LC_ALL awk + match($0,i) [loose]]',
         inian5B            => '[LC_ALL awk + match($0,i) [strict]]',
         inian6             => '[LC_ALL awk + split+dict]',
+        jjoao              => '[compiled flex generated c code]',
         oliv               => '[python + compiled regex + re.search()]',
         Vasiliou           => '[join [requires sorted files]]',
-        zdim               => '[perl + split+dict]',
+        zdim               => '[perl + regexp+dict]',
+        zdim2              => '[perl + split+dict]',
     );
     $h{$_} //= '' for @$names;
     return \%h;

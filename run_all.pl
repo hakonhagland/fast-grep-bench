@@ -11,13 +11,13 @@ use FGB::Common;
 use File::pushd ();
 use List::Util qw(max shuffle);
 use Number::Bytes::Human qw(format_bytes);
-use Sys::Info;
+use Sys::Info; # can determine number of CPU cores on the local machine.
 
 GetOptions (
-    "verbose"       => \my $verbose,
-    "check"         => \my $check,
-    "single-case=s" => \my $case,
-    "expected=i"    => \my $expected_no_lines,
+    "verbose"       => \my $verbose, # print info as the simulation proceeds
+    "check"         => \my $check,   # check if the correct number of lines were extracted
+    "single-case=s" => \my $case,    # just run this case
+    "expected=i"    => \my $expected_no_lines,  # used together with option "check"
 ) or die("Error in command line arguments\n");
 
 my $param = FGB::Common::get_param();
@@ -29,13 +29,14 @@ my $tests       = get_test_names( $param, $case );
 my $file2_size   = get_file2_size();
 my $num_cpus     = Sys::Info->new()->device( CPU => () )->count;
 
-my $times = do {
+my $run_times = do {
     my $pdir = File::pushd::pushd( $param->{test_dir} );
     run_cases( $param, $tests,  $file2_size, $num_cpus, $verbose, $check, $wc_expected );
 };
 
-print_summary( $tests, $times );
+print_summary( $tests, $run_times );
 
+# Runs all the test cases and returns an array of run times
 sub run_cases {
     my ( $param, $tests,  $file2_size, $num_cpus, $verbose, $check, $wc_expected ) = @_;
 
