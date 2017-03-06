@@ -4,6 +4,8 @@ use feature qw(say);
 use strict;
 use warnings;
 
+use Regexp::Assemble qw( );
+
 my %param = (
     case_dir               => 'cases',
     case_param_file_name   => 'params.json',
@@ -99,5 +101,18 @@ sub get_method_info {
     $h{$_} //= '' for @$names;
     return \%h;
 }
+
+sub write_ikegami_regexp_file {
+    my ( $param, $words ) = @_;
+
+    my $fn = $param->{file1_ikegami_regex_fn};
+    my $ra = Regexp::Assemble->new();
+    $ra->add(quotemeta($_)) for @$words;
+    
+    open( my $fh, '>', $fn ) or die "Could not open file '$fn': $!";
+    print {$fh} ("^[^|]*\\|(?:" . (re::regexp_pattern($ra->re()))[0] . ")\\|");
+    close $fh;
+}
+
 
 1;

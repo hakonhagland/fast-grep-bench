@@ -1,18 +1,18 @@
 #! /usr/bin/env perl
 
 use feature qw(say);
-# get correct sort order for join command: (on my machine: LC_COLLATE=en_US.UTF-8)
 use lib '.';
+# use 'locale' to get correct sort order for the 'Vasiliou' (using join) case:
+#  (on my machine: LC_COLLATE=en_US.UTF-8)
 use locale; 
 use strict;
 use warnings;
 
 use Data::Printer;
-use JSON;
 use FGB::Common;
 use File::Spec::Functions qw(catfile);
 use Getopt::Long;
-use Regexp::Assemble qw( );
+use JSON;
 
 # Assumptions:
 #
@@ -55,7 +55,7 @@ else {
     write_file1( $param, $words2 );
     write_file2( $param, $words1, $words2, \%opt );
     write_BOC_regexp_file( $param, $words2 );
-    write_ikegami_regexp_file( $param, $words2 );
+    FGB::Common::write_ikegami_regexp_file( $param, $words2 );
 }
 
 
@@ -92,18 +92,6 @@ sub copy_case_info {
         say "..$fn";
         system "cp $fn .";
     }
-}
-
-sub write_ikegami_regexp_file {
-    my ( $param, $words ) = @_;
-
-    my $fn = $param->{file1_ikegami_regex_fn};
-    my $ra = Regexp::Assemble->new();
-    $ra->add(quotemeta($_)) for @$words;
-    
-    open( my $fh, '>', $fn ) or die "Could not open file '$fn': $!";
-    print {$fh} ("^[^|]*\\|(?:" . (re::regexp_pattern($ra->re()))[0] . ")\\|");
-    close $fh;
 }
 
 sub write_BOC_regexp_file {
