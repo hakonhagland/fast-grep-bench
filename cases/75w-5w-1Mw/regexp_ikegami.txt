@@ -1,0 +1,1 @@
+^[^|]*\|(?:(?:(?:grou|cli)p|abortive|sidewalk|effect))\|

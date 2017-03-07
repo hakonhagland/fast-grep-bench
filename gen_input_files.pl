@@ -2,9 +2,6 @@
 
 use feature qw(say);
 use lib '.';
-# use 'locale' to get correct sort order for the 'Vasiliou' (using join) case:
-#  (on my machine: LC_COLLATE=en_US.UTF-8)
-use locale; 
 use strict;
 use warnings;
 
@@ -13,6 +10,7 @@ use FGB::Common;
 use File::Spec::Functions qw(catfile);
 use Getopt::Long;
 use JSON;
+use POSIX qw(locale_h);
 
 # Assumptions:
 #
@@ -82,7 +80,12 @@ sub copy_case_info {
     my ( $param, $case ) = @_;
 
     my $case_dir = $param->{case_dir};
-    my @keys = qw( file1_name file2_name file1_regex_fn skip_fn word_filename );
+    my @keys =
+      qw( 
+            file1_name file1_name_collate_c file1_ikegami_regex_fn 
+            file2_name file2_name_collate_c
+            file1_regex_fn skip_fn word_filename 
+    );
     my @files = @{ $param }{@keys};
     push @files, FGB::Common::get_alternate_filenames( $param );
     
@@ -151,11 +154,13 @@ sub write_file2 {
 sub write_file1 {
     my ( $param, $words ) = @_;
 
-    my $fn = $param->{file1_name};
-    open( my $fh, '>', $fn ) or die "Could not open file '$fn': $!";
-    print $fh (join "\n", sort @$words);
-    close $fh;
-
+    {
+        use locale;  # Use the default LC_COLLATE locale here:
+        FGB::Common::write_sorted_array_to_file( $param->{file1_name}, $words );
+    }
+    # This file is only used by method 'Vasiliou2' (uses LC_COLLATE=C)
+    FGB::Common::write_sorted_array_to_file( $param->{file1_name_collate_c}, $words );
+    
     # Format file1.txt differently for some of the methods.
     # I.e., write the original file1.txt and a modified file1b.txt.
     # file1b.txt will be used by the methods that use regex search to find

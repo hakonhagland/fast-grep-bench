@@ -1,14 +1,18 @@
 # .gitignore file created by PCL at: Tue Feb 21 19:33:27 2017
-./file1.txt
-./file2.txt
-./regexp1.txt
+/file1.txt
+/file2.txt
+/cases/1000w-100w-10Mw/file2.txt
+/cases/1000w-100w-10Mw/file2_collate_c.txt
+/regexp1.txt
 **/out.txt
-file1b.txt
-regexp1b.txt
-regexp_ikegami.txt
+/file1b.txt
+/regexp1b.txt
+/regexp_ikegami.txt
 save_case.sh
 result_table.txt
 solutions/hakon1/_Inline/
 solutions/jjoao/a.fl
 solutions/jjoao/a.out
 solutions/jjoao/lex.yy.c
+/file1_collate_c.txt
+/file2_collate_c.txt

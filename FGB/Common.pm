@@ -10,10 +10,12 @@ my %param = (
     case_dir               => 'cases',
     case_param_file_name   => 'params.json',
     file1_name             => 'file1.txt',
+    file1_name_collate_c   => 'file1_collate_c.txt',
     file1_regex_fn         => 'regexp1.txt',
     file1_ikegami_regex_fn => 'regexp_ikegami.txt',
     file2_match_field_no   => 2,
     file2_name             => 'file2.txt',
+    file2_name_collate_c   => 'file2_collate_c.txt',
     file2_words_per_line   => 3,
     output_file            => 'out.txt',
     regexp1_name           => 'regexp1.txt',
@@ -114,5 +116,12 @@ sub write_ikegami_regexp_file {
     close $fh;
 }
 
+sub write_sorted_array_to_file {
+    my ( $fn, $words ) = @_;
+
+    open( my $fh, '>', $fn ) or die "Could not open file '$fn': $!";
+    print $fh (join "\n", sort @$words);
+    close $fh;
+}
 
 1;
